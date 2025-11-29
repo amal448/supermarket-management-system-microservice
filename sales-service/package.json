@@ -1,0 +1,33 @@
+{
+  "name": "sales-service",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.20.0",
+    "nodemon": "^3.1.11",
+    "stripe": "^20.0.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.1",
+    "@types/nodemon": "^1.19.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
