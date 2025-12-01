@@ -3,6 +3,8 @@ import { SaleItemModel } from "../mongoose-schemas/saleItem.schema";
 
 export class SaleItemRepository {
   async createMany(items: Partial<SaleItemEntity>[]) {
+    console.log("createMany",items);
+    
     const docs = await SaleItemModel.insertMany(items);
     return docs.map(d => d.toObject());
   }

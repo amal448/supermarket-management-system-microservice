@@ -1,18 +1,21 @@
-// src/domain/repositories/ISaleRepository.ts
-
 import { SaleEntity } from "../entities/Sale";
-import { SaleItemEntity } from "../entities/SaleItem";
 
 export interface ISaleRepository {
-    create(
-        sale: SaleEntity,
-        items: SaleItemEntity[]
-    ): Promise<{ sale: SaleEntity; items: SaleItemEntity[] }>;
+  create(
+    sale: SaleEntity,
+  ): Promise<{ sale: SaleEntity }>;
 
-    getById(id: string): Promise<SaleEntity | null>;
+  getSalesForRole(user: {
+    id: string;
+    role: "cashier" | "manager" | "admin";
+    branchId: string;
+  }): Promise<SaleEntity[]>;
 
-    getAll(branchId?: string): Promise<SaleEntity[]>;
-    updateStatus(saleId?: string): Promise<SaleEntity[]>;
+  getSaleById(id: string): Promise<SaleEntity | null>;
+  // getAll(branchId?: string): Promise<SaleEntity[]>;
 
-
+  updateStatus(
+    saleId: string,
+    status: "PENDING" | "COMPLETED" | "REFUNDED"
+  ): Promise<SaleEntity | null>;
 }

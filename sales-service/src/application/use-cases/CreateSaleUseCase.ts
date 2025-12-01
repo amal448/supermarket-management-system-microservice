@@ -83,7 +83,7 @@ export class CheckoutUseCase {
     paymentMode?: string;
   }) {
     const { branchId, cashierId, cartResult, paymentMode } = payload;
-    console.log("cartResult.lines", cartResult.lines);
+    console.log("cartResult.lines", cartResult);
 
     const safe = this.safeNum;
     const safePaymentMode =
@@ -101,12 +101,12 @@ export class CheckoutUseCase {
       }));
 
 
-    const sale = await saleRepo.create({
+    const { sale } = await saleRepo.create({
       branchId,
       cashierId,
       subtotal: safe(cartResult.subtotal),
-      productDiscount: safe(cartResult.totalProductLevelDiscount),
-      cartDiscount: safe(cartResult.cartLevelDiscount),
+      productDiscount: safe(cartResult.totalProductDiscount),
+      cartDiscount: safe(cartResult.cartDiscount),
       totalDiscount: safe(cartResult.totalDiscount),
       finalAmount: safe(cartResult.finalAmount),
       discountsApplied: discountsApplied,
@@ -116,7 +116,43 @@ export class CheckoutUseCase {
 
     // 🟦 Create Sale Items
     const itemsToInsert = cartResult.lines.map((l: any) => ({
-      saleId: sale._id,
+      saleId: sale._id!,
+      productId: l.productId,
+      unitPrice: safe(l.unitPrice),
+      quantity: safe(l.quantity),
+      appliedDiscountName: l.appliedDiscountName ?? null,
+      appliedDiscountAmount: safe(l.appliedDiscountAmount),
+      freeUnits: safe(l.freeUnits),
+      total: safe(l.lineTotal)
+    }));
+    console.log("before  await saleItemRepo.createMany(itemsToInsert);");
+
+    await saleItemRepo.createMany(itemsToInsert);
+
+    return { sale, items: itemsToInsert };
+  }
+
+  async createStripeCheckoutSession(payload: { branchId: string; cashierId: string; cartResult: any }) {
+    const { branchId, cashierId, cartResult } = payload;
+    console.log("createStripeCheckoutSession", cartResult);
+
+    const { sale } = await saleRepo.create({
+      branchId,
+      cashierId,
+      subtotal: cartResult.subtotal,
+      productDiscount: cartResult.totalProductDiscount,
+      cartDiscount: cartResult.cartDiscount,
+      totalDiscount: cartResult.totalDiscount,
+      finalAmount: cartResult.finalAmount,
+      discountsApplied: [],
+      status: "PENDING",         // IMPORTANT ❗
+      paymentMode: "CARD"
+    });
+
+    const safe = this.safeNum;
+    // 🟦 Create Sale Items
+    const itemsToInsert = cartResult.lines.map((l: any) => ({
+      saleId: sale._id!,
       productId: l.productId,
       unitPrice: safe(l.unitPrice),
       quantity: safe(l.quantity),
@@ -127,35 +163,22 @@ export class CheckoutUseCase {
     }));
 
     await saleItemRepo.createMany(itemsToInsert);
+    // 2️⃣ Build Stripe line items
+    // 2️⃣ Build Stripe line items
+    const lineItems = cartResult.lines.map((l: any) => {
+      // Stripe expects per-unit amount in paise
+      const discountedUnitPrice = Math.round((l.lineTotal / l.quantity) * 100); // convert to paise
 
-    return { sale, items: itemsToInsert };
-  }
-
-  async createStripeCheckoutSession(payload: { branchId: string; cashierId: string; cartResult: any }) {
-    const { branchId, cashierId, cartResult } = payload;
-
-    const sale = await saleRepo.create({
-      branchId,
-      cashierId,
-      subtotal: cartResult.subtotal,
-      productDiscount: cartResult.totalProductLevelDiscount,
-      cartDiscount: cartResult.cartLevelDiscount,
-      totalDiscount: cartResult.totalDiscount,
-      finalAmount: cartResult.finalAmount,
-      discountsApplied: [],
-      status: "PENDING",         // IMPORTANT ❗
-      paymentMode: "CARD"
+      return {
+        price_data: {
+          currency: "inr",
+          product_data: { name: l.productId },
+          unit_amount: discountedUnitPrice,
+        },
+        quantity: l.quantity
+      };
     });
 
-    // 2️⃣ Build Stripe line items
-    const lineItems = cartResult.lines.map((l: any) => ({
-      price_data: {
-        currency: "inr",
-        product_data: { name: l.productName },
-        unit_amount: l.unitPrice * 100
-      },
-      quantity: l.quantity
-    }));
 
     // 3️⃣ Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -165,18 +188,11 @@ export class CheckoutUseCase {
       success_url: `${process.env.CLIENT_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.CLIENT_URL}/payment-cancel`,
       metadata: {
-        saleId: sale._id.toString()
+        saleId: sale._id!.toString()
       }
     })
     return session;
   }
-
-
-
-
-
-
-
 
 
 }
