@@ -58,8 +58,9 @@ export const InventoryController = {
   },
 
   async getBranchInventory(req: Request, res: Response) {
-    console.log("getBranchInventory",req.user);
     const user = req.user as { branchId: string };
+    console.log("user.branchId",user.branchId);
+    
     const result = await inventoryService.listBranchProducts(user.branchId);
     return res.json(result);
   }

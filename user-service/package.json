@@ -2,9 +2,12 @@
   "name": "user-service",
   "version": "1.0.0",
   "main": "index.ts",
-  "scripts": {
-    "dev": "nodemon --exec ts-node src/index.ts"
-  },
+"scripts": {
+  "build": "tsc",
+  "start": "node dist/index.js",
+  "dev": "nodemon --exec ts-node src/index.ts"
+},
+
   "author": "",
   "license": "ISC",
   "description": "",
@@ -18,8 +21,10 @@
     "express": "^5.1.0",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
     "mongoose": "^8.20.0",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

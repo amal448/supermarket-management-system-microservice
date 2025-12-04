@@ -1,19 +1,26 @@
 import express from "express";
-import cookieParser from "cookie-parser";
+import http from "http";
 import cors from "cors";
-import authRoutes from './interfaces/routes/auth.routes'
-import userRoutes from './interfaces/routes/user.routes'
+import cookieParser from "cookie-parser";
+
+import authRoutes from './interfaces/routes/auth.routes';
+import userRoutes from './interfaces/routes/user.routes';
+
 export const app = express();
 
+// Middlewares
 app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(cookieParser());
 
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 
 app.get("/", (req, res) => {
-  res.send("🚀 Store Management Backend is running");
+  res.send("🚀 Backend running");
 });
+
+// Create HTTP server
+export const server = http.createServer(app);

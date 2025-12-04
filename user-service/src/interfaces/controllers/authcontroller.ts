@@ -17,7 +17,6 @@ export const AuthController = {
   },
 
   login: async (req: Request, res: Response) => {
-    console.log("kisondfvbdfbo");
 
     try {
       const { email, password } = req.body;

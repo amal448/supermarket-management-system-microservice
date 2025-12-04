@@ -10,8 +10,8 @@ export interface SaleDoc extends Document {
   finalAmount: number;
   status: string;
   paymentMode?: string;
-   discountsApplied: {
-    productId:string;
+  discountsApplied: {
+    productId: string;
     appliedDiscountType: string | null;
     appliedDiscountName: string | null;
     appliedDiscountAmount: number;
@@ -31,14 +31,14 @@ const saleSchema = new Schema<SaleDoc>(
     status: { type: String, enum: ["PENDING", "COMPLETED", "REFUNDED"], default: "PENDING" },
     paymentMode: { type: String },
     discountsApplied: [
-  {
-    appliedDiscountType: { type: String, default: null },
-    appliedDiscountName: { type: String, default: null },
-    appliedDiscountAmount: { type: Number, default: 0 },
-    freeUnits: { type: Number, default: 0 },
-    productId: { type: String, default: 0 }
-  }
-]
+      {
+        appliedDiscountType: { type: String, default: null },
+        appliedDiscountName: { type: String, default: null },
+        appliedDiscountAmount: { type: Number, default: 0 },
+        freeUnits: { type: Number, default: 0 },
+        productId: { type: String, default: 0 }
+      }
+    ]
 
   },
   { timestamps: true }

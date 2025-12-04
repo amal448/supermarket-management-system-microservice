@@ -2,11 +2,12 @@ import { Request, Response } from "express";
 import { CheckoutUseCase } from "../../application/use-cases/CreateSaleUseCase";
 import { SalesService } from "../../application/services/sales.service";
 import { SaleRepository } from "../../infrastructure/repositories/SaleRepository";
+import { getSalesSummary } from "../../application/use-cases/GetSalesUseCase";
 
 const useCase = new CheckoutUseCase();
 const saleRepo = new SaleRepository();
 const salesService = new SalesService(saleRepo);
-
+const getSalesSummaryUseCase = new getSalesSummary(saleRepo);
 
 
 export const confirmSale = async (req: Request, res: Response) => {
@@ -34,10 +35,9 @@ export const confirmSale = async (req: Request, res: Response) => {
 export const getSales = async (req: Request, res: Response) => {
   try {
     // const  {id}= req.user;
-    console.log("requser",req.user);
+    console.log("requser", req.user);
     const sale = await salesService.getSalesDataByAccount(req.user!);
-    console.log("final SALE",sale);
-    
+
     if (!sale) {
       return res.status(404).json({ message: "Sale not found" });
     }
@@ -58,7 +58,16 @@ export const getSaleById = async (req: Request, res: Response) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-
+export const getSalesAnalysis = async (req: Request, res: Response) => {
+  try {
+    console.log("getSalesAnalysisgetSalesAnalysisgetSalesAnalysis",req.body);
+    
+      const result = await getSalesSummaryUseCase.execute();
+      return res.json(result);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Unable to fetch daily sales" });
+    }
+}
 
 

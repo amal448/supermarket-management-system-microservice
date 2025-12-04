@@ -13,7 +13,6 @@ export class ProductRepository {
 
   async findAll(): Promise<ProductEntity[]> {
     const products = await ProductModel.find().lean();
-    console.log("findAllproducts",products);
     
     return products.map((p) => this.mapDocToEntity(p));
   }

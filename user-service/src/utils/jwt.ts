@@ -14,7 +14,6 @@ export const createAccessToken = (user: any) => {
 };
 
 export const createRefreshToken = (user: any) => {
-  console.log("createRefreshToken",user);
   
   return jwt.sign(
     {

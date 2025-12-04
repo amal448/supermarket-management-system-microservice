@@ -2,9 +2,13 @@
   "name": "stock-service",
   "version": "1.0.0",
   "main": "server.ts",
-  "scripts": {
-    "dev": "nodemon --exec ts-node src/server.ts"
-  },
+  "build":"tsc",
+ "scripts": {
+  "dev": "nodemon --exec ts-node src/server.ts",
+  "build": "tsc",
+  "start": "npm run build && node dist/server.js"
+}
+,
   "author": "",
   "license": "ISC",
   "description": "",
@@ -16,6 +20,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
     "mongoose": "^8.20.0",
     "nodemon": "^3.1.11"
   },

@@ -9,15 +9,15 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import { stripeWebhook } from './presentation/controllers/payment.controller';
-
+import { connectProducer } from './kafka/producer';
 dotenv.config();
 
 
 const app = express();
 app.post(
-  "/api/payments/stripe-webhook",
-  bodyParser.raw({ type: "application/json" }), // must be raw for signature
-  stripeWebhook
+    "/api/payments/stripe-webhook",
+    bodyParser.raw({ type: "application/json" }), // must be raw for signature
+    stripeWebhook
 );
 
 app.use(express.json());
@@ -35,14 +35,19 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 4000;
 
+async function startServer() {
 
-connectDB()
-    .then(() => {
-        app.listen(PORT, () => {
-            logger.info(`Sales service listening on port ${PORT}`);
+    await connectProducer();
+    await connectDB()
+        .then(() => {
+            app.listen(PORT, () => {
+                logger.info(`Sales service listening on port ${PORT}`);
+            });
+        })
+        .catch((err) => {
+            logger.error('Failed to start:', err);
+            process.exit(1);
         });
-    })
-    .catch((err) => {
-        logger.error('Failed to start:', err);
-        process.exit(1);
-    });
+
+}
+startServer()

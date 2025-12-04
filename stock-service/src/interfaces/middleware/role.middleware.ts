@@ -14,12 +14,10 @@ export const authorizeRoles = (...allowedRoles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         try {
             const token = req.cookies.refreshToken || req.headers.authorization?.split(" ")[1];
-            console.log("token",token);
             
             if (!token) return res.status(401).json({ message: "Unauthorized" });
 
             const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as JwtPayload;
-            console.log("payload",payload);
             
             if (!allowedRoles.includes(payload.role)) {
                 return res.status(403).json({ message: "Forbidden: Insufficient permissions" });

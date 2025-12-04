@@ -231,8 +231,9 @@ listAllPendingRequests = async (req: Request, res: Response) => {
       }
     ]);
 
+    console.log("getRequestItemsId",result);
     if (!result || result.length === 0) return res.status(404).json({ error: "Request not found" });
-
+    
     res.json(result[0]);
   } catch (err) {
     console.error(err);

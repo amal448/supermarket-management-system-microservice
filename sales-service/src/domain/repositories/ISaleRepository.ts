@@ -18,4 +18,11 @@ export interface ISaleRepository {
     saleId: string,
     status: "PENDING" | "COMPLETED" | "REFUNDED"
   ): Promise<SaleEntity | null>;
+
+  getSalesSummary(month?: number, year?: number): Promise<{
+    daily: any[];
+    monthlyTotal: number;
+    yearlyTotal: number;
+  }>;
+
 }

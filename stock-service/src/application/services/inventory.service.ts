@@ -40,7 +40,7 @@ export class InventoryService {
 
   async listBranchProducts(branchId: string) {
     const branchObjectId = new Types.ObjectId(branchId);
-    console.log("branchObjectId", branchObjectId);
+    console.log(branchObjectId);
 
     return ProductModel.aggregate([
       // 1️⃣ Match all products
@@ -118,6 +118,7 @@ export class InventoryService {
           inBranch: { $cond: { if: { $gt: ["$inventory", null] }, then: true, else: false } },
           isRequested: { $gt: [{ $size: "$requests" }, 0] },
           requestedQty: { $ifNull: [{ $arrayElemAt: ["$requests.requestedQty", 0] }, 0] },
+          branchId: branchObjectId
         },
       },
 

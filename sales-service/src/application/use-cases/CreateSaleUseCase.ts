@@ -3,6 +3,8 @@ import { calculateCart } from "../../utils/discountEngine";
 import { SaleRepository } from "../../infrastructure/repositories/SaleRepository";
 import { SaleItemRepository } from "../../infrastructure/repositories/SaleItemRepository";
 import Stripe from "stripe";
+import { sendSaleCompletedEvent } from "../../kafka/producer";
+import { SaleItemEntity } from "../../domain/entities/SaleItem";
 
 const discountRepo = new DiscountRepository();
 const saleRepo = new SaleRepository();
@@ -115,7 +117,7 @@ export class CheckoutUseCase {
     });
 
     // 🟦 Create Sale Items
-    const itemsToInsert = cartResult.lines.map((l: any) => ({
+    const itemsToInsert:SaleItemEntity[] = cartResult.lines.map((l: any) => ({
       saleId: sale._id!,
       productId: l.productId,
       unitPrice: safe(l.unitPrice),
@@ -125,10 +127,24 @@ export class CheckoutUseCase {
       freeUnits: safe(l.freeUnits),
       total: safe(l.lineTotal)
     }));
-    console.log("before  await saleItemRepo.createMany(itemsToInsert);");
-
+    
     await saleItemRepo.createMany(itemsToInsert);
+    //kafa data and topic emitted passed from producer
+    console.log("kafka start;");
+    await sendSaleCompletedEvent({
+      saleId: sale._id,
+      branchId,
+      cashierId,
+      items: itemsToInsert.map((i) => ({
+        productId: i.productId,
+        qty: Number(i.quantity),
+        freeUnits: Number(i.freeUnits) ?? 0,
+      })),
+      finalAmount: sale.finalAmount,
+      timestamp: new Date().toISOString(),
+    });
 
+    console.log("Kafka event sales.completed sent");
     return { sale, items: itemsToInsert };
   }
 

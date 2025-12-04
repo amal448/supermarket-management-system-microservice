@@ -45,8 +45,126 @@ export class SaleRepository implements ISaleRepository {
     return doc ? toSaleEntity(doc) : null;
   }
   async getSaleById(id: string): Promise<SaleEntity | null> {
-  const doc = await SaleModel.findById(id).lean();
-  return doc ? toSaleEntity(doc) : null;
-}
+    const doc = await SaleModel.findById(id).lean();
+    return doc ? toSaleEntity(doc) : null;
+  }
+  async getSalesSummary(month?: number, year?: number) {
+    const now = new Date();
+
+    year = year ?? now.getFullYear();
+    month = month ?? now.getMonth() + 1;
+
+    const startOfMonth = new Date(year, month - 1, 1);
+    const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+
+    // ------------------------------
+    // 1️⃣ DAILY DATA (amount + count)
+    // ------------------------------
+    const daily = await SaleModel.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+          status: "COMPLETED"
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            paymentMode: "$paymentMode",
+          },
+          totalAmount: { $sum: "$finalAmount" },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: "$_id.date",
+          payments: {
+            $push: {
+              paymentMode: "$_id.paymentMode",
+              totalAmount: "$totalAmount",
+              count: "$count",
+            },
+          },
+          totalCount: { $sum: "$count" }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    const dailyFormatted = daily.map((day) => {
+      const result: any = {
+        date: day._id,
+        cash: 0,
+        card: 0,
+        count: day.totalCount
+      };
+
+      day.payments.forEach((p: any) => {
+        if (p.paymentMode === "CASH") result.cash = p.totalAmount;
+        if (p.paymentMode === "CARD") result.card = p.totalAmount;
+      });
+
+      return result;
+    });
+
+    // ------------------------------
+    // 2️⃣ MONTHLY TOTAL + COUNT
+    // ------------------------------
+    const monthlyAgg = await SaleModel.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+          status: "COMPLETED"
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$finalAmount" },
+          totalCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const monthlyTotal = monthlyAgg[0]?.totalAmount ?? 0;
+    const monthlyCount = monthlyAgg[0]?.totalCount ?? 0;
+
+    // ------------------------------
+    // 3️⃣ YEARLY TOTAL + COUNT
+    // ------------------------------
+    const yearlyAgg = await SaleModel.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfYear, $lte: endOfYear },
+          status: "COMPLETED"
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$finalAmount" },
+          totalCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const yearlyTotal = yearlyAgg[0]?.totalAmount ?? 0;
+    const yearlyCount = yearlyAgg[0]?.totalCount ?? 0;
+
+    return {
+      daily: dailyFormatted,
+      monthlyTotal,
+      monthlyCount,   // 👈 NEW
+      yearlyTotal,
+      yearlyCount     // 👈 NEW
+    };
+  }
+
+
 
 }
