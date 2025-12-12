@@ -11,7 +11,9 @@ interface JwtPayload {
 }
 
 export const authorizeRoles = (...allowedRoles: string[]) => {
+    
     return (req: Request, res: Response, next: NextFunction) => {
+        console.log("authorizeRoles", req.cookies.refreshToken, req.headers.authorization);
         try {
             const token = req.cookies.refreshToken || req.headers.authorization?.split(" ")[1];
             

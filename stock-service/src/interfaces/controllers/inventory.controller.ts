@@ -1,9 +1,6 @@
 // src/interfaces/controllers/inventory.controller.ts
 import { Request, Response } from "express";
-import { InventoryService } from "../../application/services/inventory.service";
-import { ProductRepository } from "../../domain/repositories/product.repository";
-
-const inventoryService = new InventoryService(new ProductRepository());
+import { inventoryService } from "../../application/serviceFactory";
 
 export const InventoryController = {
   addProduct: async (req: Request, res: Response) => {
@@ -38,7 +35,6 @@ export const InventoryController = {
   getProducts: async (_req: Request, res: Response) => {
     try {
       const result = await inventoryService.getProducts();
-      console.log("getProducts results", result);
 
       res.status(200).json(result);
     } catch (err: any) {
@@ -58,12 +54,40 @@ export const InventoryController = {
   },
 
   async getBranchInventory(req: Request, res: Response) {
-    const user = req.user as { branchId: string };
-    console.log("user.branchId",user.branchId);
+    const user = req.user as { branchId: string, role: String };
+    console.log("user", user);
+    const showOutOfStock = user.role === "manager";
+    console.log("showOutOfStock",showOutOfStock);
     
-    const result = await inventoryService.listBranchProducts(user.branchId);
+    const result = await inventoryService.listBranchProducts(
+      user.branchId,
+      showOutOfStock
+    );
     return res.json(result);
+  },
+async checkBranchInventoryStock(req: Request, res: Response) {
+  console.log("checkBranchInventoryStockcheckBranchInventoryStock",req.body);
+  
+  try {
+    const user = req.user as { branchId: string; role: string };
+    const { branchId,items } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "No items provided" });
+    }
+
+    const result = await inventoryService.validateStockForCart({
+      branchId:branchId,
+      items
+    });
+
+    return res.json(result);
+
+  } catch (err: any) {
+    console.error("Stock validation error:", err);
+    return res.status(500).json({ message: err.message });
   }
+}
 
 
 

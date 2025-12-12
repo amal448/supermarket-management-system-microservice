@@ -22,6 +22,10 @@ export class UserRepository {
   async findAll(): Promise<UserDocument[]> {
     return UserModel.find({}).exec();
   }
+  //used for chat list
+  async findManagers(): Promise<UserDocument[]> {
+    return UserModel.find({role:"manager"}).exec();
+  }
   async findAllStaff(branchId: string): Promise<UserDocument[]> {
     return UserModel.find({ branchId }).exec();
   }

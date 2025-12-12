@@ -33,6 +33,10 @@ export class UserService {
   async getAll() {
     return this.userRepo.findAll();
   }
+  //for list in broadcast chat
+  async getManagers() {
+    return this.userRepo.findManagers();
+  }
 
 
   async getUserById(id: string) {

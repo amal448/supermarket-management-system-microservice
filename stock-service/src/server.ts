@@ -3,6 +3,7 @@ import { app } from "./app"
 import { connectDB } from "./infrastructure/database/models/mongoose";
 import { startSaleConsumer } from "./kafka/consumer";
 import { connectProducer } from "./kafka/producer";
+import { connectProductProducer } from "./kafka/productProducer/productProducer";
 dotenv.config();
 
 const PORT = process.env.PORT || 5003;
@@ -12,6 +13,7 @@ const startServer = async () => {
     // Connect databases first
     await connectDB();
     await connectProducer();
+    await connectProductProducer()
     await startSaleConsumer();
 
     // Start Express server

@@ -7,7 +7,7 @@ export class StockRequestService {
     private requestRepo: IStockRequestRepository,
     private itemRepo: IStockRequestItemRepository,
     private inventoryRepo: IBranchInventoryRepository
-  ) {}
+  ) { }
 
   async createRequest(input: { branchId: string; requestedBy: string; items: { productId: string; quantity: number }[] }) {
     const request = await this.requestRepo.createRequest({ branchId: input.branchId, requestedBy: input.requestedBy });
@@ -16,30 +16,30 @@ export class StockRequestService {
     return { request, items: savedItems };
   }
 
-async getRequestsByBranch(branchId: string, status?: string) {
-  const requests = await this.requestRepo.findByBranchId(branchId, status);
-  
-  const requestIds = requests.map(r => r._id.toString());
+  async getRequestsByBranch(branchId: string, status?: string) {
+    const requests = await this.requestRepo.findByBranchId(branchId, status);
 
-  const items = await Promise.all(
-    requestIds.map(id => this.itemRepo.findByRequestId(id))
-  );
+    const requestIds = requests.map(r => r._id.toString());
 
-  return { 
-    requests, 
-    items: items.flat() 
-  };
-}
+    const items = await Promise.all(
+      requestIds.map(id => this.itemRepo.findByRequestId(id))
+    );
+
+    return {
+      requests,
+      items: items.flat()
+    };
+  }
 
 
   async approveItem(itemId: string, qty: number) {
-    console.log("itemId",itemId);
-    
+    console.log("itemId", itemId);
+
     const item = await this.itemRepo.findById(itemId);
     if (!item) throw new Error("Item not found");
 
     item.approvedQty = qty;
-    item.status ="APPROVED";
+    item.status = "APPROVED";
     await item.save();
 
     const request = await this.requestRepo.findById(item.requestId.toString());
@@ -49,7 +49,7 @@ async getRequestsByBranch(branchId: string, status?: string) {
 
     const allItems = await this.itemRepo.findByRequestId(request._id.toString());
     request.status = allItems.every(i => i.status === "APPROVED") ? "APPROVED" :
-                     allItems.every(i => i.status === "REJECTED") ? "REJECTED" : "PARTIALLY_APPROVED";
+      allItems.every(i => i.status === "REJECTED") ? "REJECTED" : "PARTIALLY_APPROVED";
     await request.save();
 
     return { request, item };
@@ -67,7 +67,7 @@ async getRequestsByBranch(branchId: string, status?: string) {
 
     const allItems = await this.itemRepo.findByRequestId(request._id.toString());
     request.status = allItems.every(i => i.status === "REJECTED") ? "REJECTED" :
-                     allItems.every(i => i.status === "APPROVED") ? "APPROVED" : "PARTIALLY_APPROVED";
+      allItems.every(i => i.status === "APPROVED") ? "APPROVED" : "PARTIALLY_APPROVED";
     await request.save();
 
     return { request, item };

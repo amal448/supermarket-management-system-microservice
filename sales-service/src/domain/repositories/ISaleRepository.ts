@@ -1,5 +1,15 @@
+import { SalesAnalyticsAggregate } from "../../infrastructure/repositories/SaleRepository";
 import { SaleEntity } from "../entities/Sale";
 
+export interface SalesAnalyticsResult {
+  data: SalesAnalyticsAggregate[];
+  total: {
+    totalRevenue: number;
+    totalDiscount: number;
+    expectedProfit: number;
+    actualProfit: number;
+  };
+}
 export interface ISaleRepository {
   create(
     sale: SaleEntity,
@@ -24,5 +34,17 @@ export interface ISaleRepository {
     monthlyTotal: number;
     yearlyTotal: number;
   }>;
+  getBranchSummary(branchId?:string,month?: number, year?: number): Promise<{
+    daily: any[];
+    monthlyTotal: number;
+    yearlyTotal: number;
+  }>;
+
+  getSalesAnalytics(
+    branchId: string,
+    startDate: Date,
+    endDate: Date,
+    period: "daily" | "monthly" | "yearly"
+  ): Promise<SalesAnalyticsResult>;
 
 }

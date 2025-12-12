@@ -13,10 +13,30 @@ export async function connectProducer() {
 }
 
 export async function sendSaleCompletedEvent(data: any) {
-    console.log("inside send Sale CompleteEvent",data);
-    
+    console.log("inside send Sale CompleteEvent", data);
+
     await producer.send({
         topic: "sales.completed",
         messages: [{ value: JSON.stringify(data) }],
     });
 }
+//Sales Latest Data for send to user service
+export async function sendDashboardUpdateEvent(data: any) {
+    await producer.send({
+        topic: "sales.dashboard.updated",
+        messages: [{ value: JSON.stringify(data) }],
+    });
+
+    console.log("📤 Kafka: sales.dashboard.updated emitted");
+}
+export async function sendAnalyticsUpdatedEvent(data: any) {
+    console.log("sendAnalyticsUpdatedEvent", data);
+
+    await producer.send({
+        topic: "sales.analytics.updated",
+        messages: [{ value: JSON.stringify(data) }],
+    });
+
+    console.log("📊 Kafka: sales.analytics.updated emitted");
+}
+

@@ -3,4 +3,5 @@ export interface RemoteUser {
   name: string;
   email: string;
   role: string;
+  branchId:string
 }

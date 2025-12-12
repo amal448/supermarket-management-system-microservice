@@ -73,7 +73,8 @@ export const applyDiscounts = async (req: Request, res: Response) => {
     console.log("Mapped Items →", mappedItems);
 
     const result = await checkoutUseCase.calculate(mappedItems);
-
+    console.log("applydiscounts before return",result);
+    
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ message: err.message });

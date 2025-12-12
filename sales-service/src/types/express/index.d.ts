@@ -1,4 +1,4 @@
-import "express";
+import "express-serve-static-core";
 import { Role } from "../../domain/entities/userEntity";
 
 declare module "express-serve-static-core" {

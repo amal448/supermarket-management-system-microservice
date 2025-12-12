@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 
 import authRoutes from './interfaces/routes/auth.routes';
 import userRoutes from './interfaces/routes/user.routes';
+import socketRoutes from "./interfaces/routes/chat.routes";
 
 export const app = express();
 
@@ -18,6 +19,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 
+app.use("/api/socket", socketRoutes);
 app.get("/", (req, res) => {
   res.send("🚀 Backend running");
 });

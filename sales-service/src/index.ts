@@ -10,6 +10,9 @@ import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import { stripeWebhook } from './presentation/controllers/payment.controller';
 import { connectProducer } from './kafka/producer';
+import { startProductInfoConsumer } from './kafka/product/productConsumer';
+import http from "http";
+import { initSocket } from './application/services/socket.service';
 dotenv.config();
 
 
@@ -32,15 +35,18 @@ app.use("/api/sales", salesRoutes)
 // error handler
 app.use(errorHandler);
 
+const server = http.createServer(app);
 
+initSocket(server);
 const PORT = process.env.PORT || 4000;
 
 async function startServer() {
 
     await connectProducer();
+    await startProductInfoConsumer().catch(console.error);
     await connectDB()
         .then(() => {
-            app.listen(PORT, () => {
+            server.listen(PORT, () => {
                 logger.info(`Sales service listening on port ${PORT}`);
             });
         })

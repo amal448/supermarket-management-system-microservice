@@ -30,6 +30,8 @@ export const BranchController = {
   getAllBranches: async (_req: Request, res: Response) => {
     try {
       const result = await branchService.getAllBranches();
+      console.log("getallBranches",result);
+      
       res.status(200).json(result);
     } catch (err: any) {
       res.status(400).json({ message: err.message });

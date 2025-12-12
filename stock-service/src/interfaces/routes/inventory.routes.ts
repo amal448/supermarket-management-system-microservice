@@ -10,5 +10,6 @@ router.post("/add-product", authorizeRoles( "admin"), InventoryController.addPro
 router.put("/:id", authorizeRoles("admin", "manager"), InventoryController.updateProduct);
 router.delete("/:id", authorizeRoles("admin"), InventoryController.deleteProduct);
 router.get("/branch/stock",authorizeRoles("manager","cashier"), InventoryController.getBranchInventory);
+router.post("/check/branch-stock", InventoryController.checkBranchInventoryStock);
 
 export default router;

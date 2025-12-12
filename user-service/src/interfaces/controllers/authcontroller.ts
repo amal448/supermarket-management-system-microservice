@@ -64,6 +64,8 @@ getMe: async (req: Request, res: Response) => {
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_ACCESS_SECRET!) as { id: string };
     const user = await UserModel.findById(decoded.id).select("-password");
+    console.log("getmeuser",user);
+    
     return res.json({ user });
   } catch (error: any) {
     return res.status(401).json({ message: "Access Token expired" });
@@ -81,7 +83,8 @@ refresh: async (req: Request, res: Response) => {
       if (!user) return res.status(404).json({ message: "User not found" });
 
       const newAccessToken = createAccessToken(user.id.toString());
-      return res.json({ accessToken: newAccessToken , user: { id: user._id, name: user.username, email: user.email, role: user.role } });
+                
+      return res.json({ accessToken: newAccessToken , user: { id: user._id, name: user.username, email: user.email, role: user.role,branchId:user.branchId } });
     } catch {
       return res.status(401).json({ message: "Invalid refresh token" });
     }

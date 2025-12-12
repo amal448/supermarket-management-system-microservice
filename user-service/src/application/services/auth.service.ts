@@ -67,6 +67,7 @@ export const AuthService = {
                 name: user.username,
                 email: user.email,
                 role: user.role,
+                branchId:user.branchId
             },
             accessToken,
             refreshToken,

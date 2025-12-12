@@ -4,7 +4,6 @@ import cors from "cors";
 import stockRequestRoutes from './interfaces/routes/stockRequest.routes'
 import branchRoutes from './interfaces/routes/branch.routes'
 import inventoryRoutes from "./interfaces/routes/inventory.routes";
-
 export const app = express();
 
 app.use(cors({ origin: "http://localhost:5173", credentials: true }));

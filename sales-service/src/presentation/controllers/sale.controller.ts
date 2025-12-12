@@ -9,7 +9,6 @@ const saleRepo = new SaleRepository();
 const salesService = new SalesService(saleRepo);
 const getSalesSummaryUseCase = new getSalesSummary(saleRepo);
 
-
 export const confirmSale = async (req: Request, res: Response) => {
   try {
     const { cartResult, paymentMode } = req.body;
@@ -26,7 +25,7 @@ export const confirmSale = async (req: Request, res: Response) => {
       return res.json({ url: session.url });
     }
 
-    const resu = await useCase.confirmSale({ branchId, cashierId: id, cartResult, paymentMode });
+    const resu = await useCase.confirmSale({ branchId, cashierId: id, cartResult, paymentMode, token: req.headers.authorization?.split(" ")[1] });
     res.status(201).json(resu);
   } catch (err: any) {
     res.status(400).json({ message: err.message });
@@ -58,16 +57,52 @@ export const getSaleById = async (req: Request, res: Response) => {
     res.status(500).json({ message: err.message });
   }
 };
-export const getSalesAnalysis = async (req: Request, res: Response) => {
+// Controller
+export const getSalesDashBoard = async (req: Request, res: Response) => {
   try {
-    console.log("getSalesAnalysisgetSalesAnalysisgetSalesAnalysis",req.body);
+    const role = req.user?.role;
+    const branchId = req.user?.branchId;
+    console.log("getSalesDashBoard",role,branchId);
     
-      const result = await getSalesSummaryUseCase.execute();
-      return res.json(result);
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Unable to fetch daily sales" });
+    let summary;
+
+    if (role === "admin") {
+      summary = await getSalesSummaryUseCase.execute();        // all branches
+    } else if (role === "manager" || role === "cashier") {
+      summary = await getSalesSummaryUseCase.execute(branchId); // only branch
+    } else {
+      return res.status(403).json({ message: "Unauthorized" });
     }
-}
+
+    return res.json(summary); // <-- VERY IMPORTANT (Missing Earlier)
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Unable to fetch sales dashboard" });
+  }
+};
+
+export const getAnalytics = async (req: Request, res: Response) => {
+  try {
+    const { branchId, startDate, endDate, period } = req.query;
+
+    if (!branchId || !startDate || !endDate || !period) {
+      return res.status(400).json({ success: false, message: "Missing required query params" });
+    }
+
+    const analytics = await salesService.getAnalytics(
+      branchId as string,
+      new Date(startDate as string),
+      new Date(endDate as string),
+      period as "daily" | "monthly" | "yearly"
+    );
+    console.log("dataanalytics", analytics.data);
+
+    return res.json({ success: true, data: analytics.data, total: analytics.total });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
 
 

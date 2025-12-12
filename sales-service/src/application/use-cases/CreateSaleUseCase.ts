@@ -3,13 +3,18 @@ import { calculateCart } from "../../utils/discountEngine";
 import { SaleRepository } from "../../infrastructure/repositories/SaleRepository";
 import { SaleItemRepository } from "../../infrastructure/repositories/SaleItemRepository";
 import Stripe from "stripe";
-import { sendSaleCompletedEvent } from "../../kafka/producer";
+import { sendAnalyticsUpdatedEvent, sendDashboardUpdateEvent, sendSaleCompletedEvent } from "../../kafka/producer";
 import { SaleItemEntity } from "../../domain/entities/SaleItem";
+import axios from "axios";
+import { getSalesSummary } from "./GetSalesUseCase";
+import { getIO } from "../services/socket.service";
+import { SalesService } from "../services/sales.service";
 
 const discountRepo = new DiscountRepository();
 const saleRepo = new SaleRepository();
 const saleItemRepo = new SaleItemRepository();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const salesservice = new SalesService(saleRepo);
 
 export class CheckoutUseCase {
 
@@ -83,9 +88,10 @@ export class CheckoutUseCase {
     cashierId: string;
     cartResult: any;
     paymentMode?: string;
+    token?: string; // add this
   }) {
-    const { branchId, cashierId, cartResult, paymentMode } = payload;
-    console.log("cartResult.lines", cartResult);
+    const { branchId, cashierId, cartResult, paymentMode, token } = payload;
+    // console.log("cartResult.lines", cartResult); 
 
     const safe = this.safeNum;
     const safePaymentMode =
@@ -102,6 +108,39 @@ export class CheckoutUseCase {
         freeUnits: item.freeUnits,
       }));
 
+    console.log(" BEFORE creating Sale");
+
+    // BEFORE creating Sale
+    try {
+      const isStockValid = await axios.post(
+        "http://localhost:5003/api/inventory/check/branch-stock",
+        {
+          branchId,
+          items: cartResult.lines.map((l: { productId: string; quantity: number; freeUnits?: number }) => ({
+            productId: l.productId,
+            qty: l.quantity,
+            freeUnits: l.freeUnits ?? 0
+          }))
+        },
+        {
+          withCredentials: false,
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      console.log("isStockValidisStockValid", isStockValid.data);
+
+      if (!isStockValid.data.ok) {
+        throw new Error("Stock not sufficient for one or more items");
+      }
+
+    }
+    catch (error) {
+      console.log(error);
+
+    }
 
     const { sale } = await saleRepo.create({
       branchId,
@@ -117,7 +156,7 @@ export class CheckoutUseCase {
     });
 
     // 🟦 Create Sale Items
-    const itemsToInsert:SaleItemEntity[] = cartResult.lines.map((l: any) => ({
+    const itemsToInsert: SaleItemEntity[] = cartResult.lines.map((l: any) => ({
       saleId: sale._id!,
       productId: l.productId,
       unitPrice: safe(l.unitPrice),
@@ -127,8 +166,31 @@ export class CheckoutUseCase {
       freeUnits: safe(l.freeUnits),
       total: safe(l.lineTotal)
     }));
-    
+
     await saleItemRepo.createMany(itemsToInsert);
+
+
+    // // After saving sale & items
+    // const summary = await new getSalesSummary(saleRepo).execute();
+
+    // 1️⃣ Branch Summary (only this branch)
+    const branchSummary = await new getSalesSummary(saleRepo).execute(branchId);
+
+    await sendDashboardUpdateEvent({
+      type: "BRANCH_UPDATE",
+      branchId,
+      summary: branchSummary
+    });
+
+    // 2️⃣ Global Summary (admin dashboard)
+    const globalSummary = await new getSalesSummary(saleRepo).execute();
+
+    await sendDashboardUpdateEvent({
+      type: "GLOBAL_UPDATE",
+      summary: globalSummary
+    });
+
+
     //kafa data and topic emitted passed from producer
     console.log("kafka start;");
     await sendSaleCompletedEvent({
@@ -143,6 +205,20 @@ export class CheckoutUseCase {
       finalAmount: sale.finalAmount,
       timestamp: new Date().toISOString(),
     });
+    // After saving sale & items ****************
+    const analytics = await salesservice.getAnalytics(
+      payload.branchId,
+      new Date(new Date().getFullYear(), new Date().getMonth(), 1), // start of month
+      new Date(), // end date
+      "daily"
+    );
+
+    // Emit sales analytics event
+    await sendAnalyticsUpdatedEvent(analytics);
+
+
+
+
 
     console.log("Kafka event sales.completed sent");
     return { sale, items: itemsToInsert };

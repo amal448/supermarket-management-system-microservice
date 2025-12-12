@@ -1,6 +1,7 @@
 // src/infrastructure/repositories/product.repository.ts
 import { ProductEntity } from "../../domain/entities/product.entity";
 import { ProductModel } from "../../infrastructure/database/models/product.model";
+import { sendProductInfoUpdate } from "../../kafka/productProducer/productProducer";
 
 export class ProductRepository {
 
@@ -25,6 +26,7 @@ export class ProductRepository {
   async create(data: ProductEntity): Promise<ProductEntity> {
     const product = new ProductModel(data);
     await product.save();
+    await sendProductInfoUpdate(product);
     return this.mapDocToEntity(product.toObject());
   }
 

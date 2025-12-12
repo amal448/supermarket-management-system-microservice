@@ -5,6 +5,7 @@ import { AuthenticatedUser } from "../../domain/entities/user.entity";
 import { ProductRepository } from "../../domain/repositories/product.repository";
 import { BranchInventory } from "../../infrastructure/database/models/branchInventory.model";
 import { ProductModel } from "../../infrastructure/database/models/product.model";
+// import { InventoryRepository } from "../../infrastructure/repositories/inventoryRepository";
 
 function generateSKU(name: string, brand?: string, unit?: string) {
   const base = name.slice(0, 3).toUpperCase();
@@ -14,7 +15,10 @@ function generateSKU(name: string, brand?: string, unit?: string) {
 }
 
 export class InventoryService {
-  constructor(private productRepo: ProductRepository) { }
+  constructor(
+    private productRepo: ProductRepository,
+    // private inventoryRepo: InventoryRepository
+  ) { }
 
   async addProduct(user: AuthenticatedUser, data: ProductEntity) {
     this.ensureAdmin(user);
@@ -38,15 +42,12 @@ export class InventoryService {
     return this.productRepo.create(data);
   }
 
-  async listBranchProducts(branchId: string) {
+  async listBranchProducts(branchId: string, showOutOfStock: boolean = false) {
     const branchObjectId = new Types.ObjectId(branchId);
-    console.log(branchObjectId);
 
-    return ProductModel.aggregate([
-      // 1️⃣ Match all products
+    const pipeline: any[] = [
       { $match: {} },
 
-      // 2️⃣ Lookup branch inventory for each product
       {
         $lookup: {
           from: "branchinventories",
@@ -56,7 +57,6 @@ export class InventoryService {
               $match: {
                 $expr: {
                   $and: [
-                    // Ensure types match: productId as ObjectId
                     { $eq: ["$productId", "$$productId"] },
                     { $eq: ["$branchId", branchObjectId] },
                   ],
@@ -69,7 +69,6 @@ export class InventoryService {
       },
       { $unwind: { path: "$inventory", preserveNullAndEmptyArrays: true } },
 
-      // 3️⃣ Lookup pending stock requests
       {
         $lookup: {
           from: "stockrequestitems",
@@ -93,7 +92,7 @@ export class InventoryService {
               $match: {
                 $expr: {
                   $and: [
-                    { $eq: ["$req.branchId", branchObjectId] }, // type-safe
+                    { $eq: ["$req.branchId", branchObjectId] },
                     { $eq: ["$req.status", "PENDING"] },
                   ],
                 },
@@ -110,29 +109,102 @@ export class InventoryService {
         },
       },
 
-      // 4️⃣ Compute fields for frontend
+      // compute final fields
       {
         $addFields: {
           stock: { $ifNull: ["$inventory.stock", 0] },
           requiredLevel: { $ifNull: ["$inventory.requiredLevel", 10] },
-          inBranch: { $cond: { if: { $gt: ["$inventory", null] }, then: true, else: false } },
+          inBranch: { $cond: [{ $gt: ["$inventory", null] }, true, false] },
           isRequested: { $gt: [{ $size: "$requests" }, 0] },
           requestedQty: { $ifNull: [{ $arrayElemAt: ["$requests.requestedQty", 0] }, 0] },
-          branchId: branchObjectId
+          branchId: branchObjectId,
         },
       },
+    ];
 
-      // 5️⃣ Cleanup unnecessary fields
-      {
-        $project: {
-          inventory: 0,
-          requests: 0,
-        },
-      },
-    ]);
+    // ➜ ADD CONDITIONALLY the $match
+    if (!showOutOfStock) {
+      pipeline.push({
+        $match: { stock: { $gt: 0 } }
+      });
+    }
+
+    pipeline.push({
+      $project: {
+        inventory: 0,
+        requests: 0,
+      }
+    });
+
+    return ProductModel.aggregate(pipeline);
   }
 
+  async validateStockForCart(payload: {
+  branchId: string;
+  items: Array<{
+    productId: string;
+    qty: number;
+    freeUnits?: number;
+  }>;
+}) {
+  const { branchId, items } = payload;
 
+  const results = [];
+
+  for (const item of items) {
+    const { productId, qty, freeUnits = 0 } = item;
+
+    const totalRequested = qty + freeUnits;
+
+    // reuse your existing method
+    const stock = await this.getCurrentStock(branchId, productId);
+
+    const available = stock?.stockQty ?? 0;
+
+    if (available >= totalRequested) {
+      results.push({
+        productId,
+        requested: totalRequested,
+        available,
+        ok: true
+      });
+    } else {
+      results.push({
+        productId,
+        requested: totalRequested,
+        available,
+        ok: false,
+        message: `Only ${available} left`
+      });
+    }
+  }
+
+  const allOk = results.every((r) => r.ok);
+console.log("before return,allOk",allOk,results);
+
+  return {
+    valid: allOk,
+    results
+  };
+}
+
+
+
+
+
+  
+async getCurrentStock(branchId: string, productId: string) {
+  const item = await BranchInventory.findOne({ branchId, productId });
+
+  if (!item) {
+    return { stockQty: 0, isOut: true };
+  }
+
+  return {
+    stockQty: item.stock,
+    isOut: item.stock === 0
+  };
+}
 
 
   async updateProduct(user: AuthenticatedUser, id: string, data: Partial<ProductEntity>) {
