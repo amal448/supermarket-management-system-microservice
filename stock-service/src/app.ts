@@ -6,7 +6,8 @@ import branchRoutes from './interfaces/routes/branch.routes'
 import inventoryRoutes from "./interfaces/routes/inventory.routes";
 export const app = express();
 
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({ origin:["http://localhost:5173","https://joyful-genie-aaea2e.netlify.app"], credentials: true }));
+
 app.use(express.json());
 app.use(cookieParser());
 

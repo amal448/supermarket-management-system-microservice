@@ -4,6 +4,7 @@ import { StockRequest } from "../../infrastructure/database/models/stockRequest.
 import axios from "axios";
 import mongoose from "mongoose";
 import { InventoryService } from "../../application/services/inventory.service";
+import { AggregatedStockRequest } from "../../types/stocktypes";
 
 export class StockRequestController {
   constructor(
@@ -50,32 +51,37 @@ export class StockRequestController {
   }
 
   listAllPendingRequests = async (req: Request, res: Response) => {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+
     try {
-      // 1️⃣ Fetch all users from User Microservice
-      const usersResponse = await axios.get("http://localhost:5000/api/user/get-all-manager", {
-        withCredentials: true,
-      });
+      // 1️⃣ Fetch managers
+      const usersResponse = await axios.get(
+        "http://localhost:5000/api/user/get-all-manager",
+        { withCredentials: true }
+      );
 
-      console.log("user", usersResponse.data);
+      const allUsers = usersResponse.data as Array<{
+        _id: string;
+        username: string;
+        email: string;
+        role: string;
+      }>;
 
-      const allUsers = usersResponse.data as Array<{ _id: string; username: string; email: string; role: string }>;
       const userMap = new Map(allUsers.map(u => [u._id, u]));
 
-      // 2️⃣ Aggregate Stock Requests
+      // 2️⃣ Aggregation with pagination
       const result = await StockRequest.aggregate([
-        // Only pending/rejected
         { $match: { status: { $ne: "APPROVED" } } },
-
         { $sort: { createdAt: -1 } },
 
-        // Convert branchId to ObjectId in case it's stored as string
         {
           $addFields: {
             branchIdObj: { $toObjectId: "$branchId" }
           }
         },
 
-        // Lookup branch
         {
           $lookup: {
             from: "branches",
@@ -86,7 +92,6 @@ export class StockRequestController {
         },
         { $unwind: { path: "$branch", preserveNullAndEmptyArrays: true } },
 
-        // Lookup stock request items
         {
           $lookup: {
             from: "stockrequestitems",
@@ -96,7 +101,6 @@ export class StockRequestController {
           }
         },
 
-        // Lookup products
         {
           $lookup: {
             from: "products",
@@ -106,7 +110,6 @@ export class StockRequestController {
           }
         },
 
-        // Map items and attach product details
         {
           $project: {
             _id: 1,
@@ -121,9 +124,7 @@ export class StockRequestController {
                 input: "$items",
                 as: "i",
                 in: {
-                  requestId: "$$i.requestId",
                   requestItemId: "$$i._id",
-                  productId: "$$i.productId",
                   requestedQty: "$$i.requestedQty",
                   approvedQty: "$$i.approvedQty",
                   status: "$$i.status",
@@ -143,12 +144,30 @@ export class StockRequestController {
               }
             }
           }
+        },
+
+        // ✅ PAGINATION
+        {
+          $facet: {
+            data: [
+              { $skip: skip },
+              { $limit: limit }
+            ],
+            meta: [
+              { $count: "total" }
+            ]
+          }
         }
       ]);
 
-      // 3️⃣ Enrich with manager data
-      const enriched = result.map(req => {
+      // const data = result[0].data;
+      const total = result[0].meta[0]?.total || 0;
+
+      const data = result[0].data as AggregatedStockRequest[];
+
+      const enriched = data.map((req: AggregatedStockRequest) => {
         const user = userMap.get(req.requestedBy?.toString());
+
         return {
           ...req,
           manager: user
@@ -162,21 +181,50 @@ export class StockRequestController {
         };
       });
 
-      // 4️⃣ Return
-      res.json(enriched);
+      // 4️⃣ Response
+      res.json({
+        data: enriched,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
+
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to fetch stock requests" });
     }
   };
+
   getRequestItemsById = async (req: Request, res: Response) => {
     try {
       const { requestId } = req.params;
 
       // Aggregate to fetch items + product details for the specific request
       const result = await StockRequest.aggregate([
-        { $match: { _id: new mongoose.Types.ObjectId(requestId) } },
+        {
+          $match: { _id: new mongoose.Types.ObjectId(requestId) }
+        },
 
+        // 🔹 Branch lookup
+        {
+          $lookup: {
+            from: "branches",
+            localField: "branchId",
+            foreignField: "_id",
+            as: "branch"
+          }
+        },
+        {
+          $unwind: {
+            path: "$branch",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+
+        // 🔹 Items lookup
         {
           $lookup: {
             from: "stockrequestitems",
@@ -186,6 +234,7 @@ export class StockRequestController {
           }
         },
 
+        // 🔹 Products lookup
         {
           $lookup: {
             from: "products",
@@ -198,18 +247,23 @@ export class StockRequestController {
         {
           $project: {
             _id: 1,
-            branchId: 1,
-            branchName: "$branch.name",
-            requestedBy: 1,
             status: 1,
+            requestedBy: 1,
             createdAt: 1,
-            notes: 1,
+
+            // ✅ Branch details
+            branch: {
+              _id: "$branch._id",
+              name: "$branch.name",
+              location: "$branch.location",
+              managerId: "$branch.managerId",
+            },
+
             items: {
               $map: {
                 input: "$items",
                 as: "i",
                 in: {
-                  requestId: "$$i.requestId",
                   requestItemId: "$$i._id",
                   productId: "$$i.productId",
                   requestedQty: "$$i.requestedQty",
@@ -234,6 +288,7 @@ export class StockRequestController {
         }
       ]);
 
+
       console.log("getRequestItemsId", result);
       if (!result || result.length === 0) return res.status(404).json({ error: "Request not found" });
 
@@ -243,27 +298,27 @@ export class StockRequestController {
       res.status(500).json({ error: "Failed to fetch request items" });
     }
   };
-// getCurrentStockById = async (req: Request, res: Response) => {
-//   try {
-//     const branchId = req.user?.branchId; 
-//     const productId = req.params.productId;
+  // getCurrentStockById = async (req: Request, res: Response) => {
+  //   try {
+  //     const branchId = req.user?.branchId; 
+  //     const productId = req.params.productId;
 
-//     if (!branchId) {
-//       return res.status(400).json({ message: "Branch ID missing" });
-//     }
+  //     if (!branchId) {
+  //       return res.status(400).json({ message: "Branch ID missing" });
+  //     }
 
-//     const stock = await this.inventoryService.getCurrentStock(
-//       branchId as string,
-//       productId
-//     );
+  //     const stock = await this.inventoryService.getCurrentStock(
+  //       branchId as string,
+  //       productId
+  //     );
 
-//     res.json(stock);
+  //     res.json(stock);
 
-//   } catch (err) {
-//     const error = err as Error;
-//     res.status(500).json({ message: error.message });
-//   }
-// };
+  //   } catch (err) {
+  //     const error = err as Error;
+  //     res.status(500).json({ message: error.message });
+  //   }
+  // };
 
 
 

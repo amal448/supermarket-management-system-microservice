@@ -24,7 +24,9 @@ app.post(
 );
 
 app.use(express.json());
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({ origin:["http://localhost:5173","https://joyful-genie-aaea2e.netlify.app"], credentials: true }));
+
+// app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(cookieParser());
 
 

@@ -216,75 +216,71 @@ export class CheckoutUseCase {
     // Emit sales analytics event
     await sendAnalyticsUpdatedEvent(analytics);
 
-
-
-
-
     console.log("Kafka event sales.completed sent");
     return { sale, items: itemsToInsert };
   }
 
-  async createStripeCheckoutSession(payload: { branchId: string; cashierId: string; cartResult: any }) {
-    const { branchId, cashierId, cartResult } = payload;
-    console.log("createStripeCheckoutSession", cartResult);
+ async createStripeCheckoutSession(payload: { branchId: string; cashierId: string; cartResult: any }) {
+  const { branchId, cashierId, cartResult } = payload;
+  console.log("createStripeCheckoutSession", cartResult);
 
-    const { sale } = await saleRepo.create({
+  // 1️⃣ Create Sale (PENDING status)
+  const { sale } = await saleRepo.create({
+    branchId,
+    cashierId,
+    subtotal: cartResult.subtotal,
+    productDiscount: cartResult.totalProductDiscount,
+    cartDiscount: cartResult.cartDiscount,
+    totalDiscount: cartResult.totalDiscount,
+    finalAmount: cartResult.finalAmount,
+    discountsApplied: [], // can populate if needed
+    status: "PENDING",
+    paymentMode: "CARD"
+  });
+
+  const safe = this.safeNum;
+
+  // 2️⃣ Create Sale Items
+  const itemsToInsert = cartResult.lines.map((l: any) => ({
+    saleId: sale._id!,
+    productId: l.productId,
+    unitPrice: safe(l.unitPrice),
+    quantity: safe(l.quantity),
+    appliedDiscountName: l.appliedDiscountName ?? null,
+    appliedDiscountAmount: safe(l.appliedDiscountAmount),
+    freeUnits: safe(l.freeUnits),
+    total: safe(l.lineTotal)
+  }));
+
+  await saleItemRepo.createMany(itemsToInsert);
+
+  // 3️⃣ Build Stripe line items
+  const lineItems = cartResult.lines.map((l: any) => ({
+    price_data: {
+      currency: "inr",
+      product_data: { name: l.productId },
+      unit_amount: Math.round((l.lineTotal / l.quantity) * 100), // in paise
+    },
+    quantity: l.quantity
+  }));
+
+  // 4️⃣ Create Stripe Checkout Session with all metadata
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    payment_method_types: ["card"],
+    line_items: lineItems,
+    success_url: `${process.env.CLIENT_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${process.env.CLIENT_URL}/payment-cancel`,
+    metadata: {
+      saleId: sale._id!.toString(),
       branchId,
       cashierId,
-      subtotal: cartResult.subtotal,
-      productDiscount: cartResult.totalProductDiscount,
-      cartDiscount: cartResult.cartDiscount,
-      totalDiscount: cartResult.totalDiscount,
-      finalAmount: cartResult.finalAmount,
-      discountsApplied: [],
-      status: "PENDING",         // IMPORTANT ❗
-      paymentMode: "CARD"
-    });
+      cartResult: JSON.stringify(itemsToInsert) // stringify items
+    }
+  });
 
-    const safe = this.safeNum;
-    // 🟦 Create Sale Items
-    const itemsToInsert = cartResult.lines.map((l: any) => ({
-      saleId: sale._id!,
-      productId: l.productId,
-      unitPrice: safe(l.unitPrice),
-      quantity: safe(l.quantity),
-      appliedDiscountName: l.appliedDiscountName ?? null,
-      appliedDiscountAmount: safe(l.appliedDiscountAmount),
-      freeUnits: safe(l.freeUnits),
-      total: safe(l.lineTotal)
-    }));
-
-    await saleItemRepo.createMany(itemsToInsert);
-    // 2️⃣ Build Stripe line items
-    // 2️⃣ Build Stripe line items
-    const lineItems = cartResult.lines.map((l: any) => {
-      // Stripe expects per-unit amount in paise
-      const discountedUnitPrice = Math.round((l.lineTotal / l.quantity) * 100); // convert to paise
-
-      return {
-        price_data: {
-          currency: "inr",
-          product_data: { name: l.productId },
-          unit_amount: discountedUnitPrice,
-        },
-        quantity: l.quantity
-      };
-    });
-
-
-    // 3️⃣ Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      success_url: `${process.env.CLIENT_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.CLIENT_URL}/payment-cancel`,
-      metadata: {
-        saleId: sale._id!.toString()
-      }
-    })
-    return session;
-  }
+  return session;
+}
 
 
 }

@@ -9,9 +9,13 @@ export class StockRequestService {
     private inventoryRepo: IBranchInventoryRepository
   ) { }
 
-  async createRequest(input: { branchId: string; requestedBy: string; items: { productId: string; quantity: number }[] }) {
-    const request = await this.requestRepo.createRequest({ branchId: input.branchId, requestedBy: input.requestedBy });
-    const itemsData = input.items.map(i => ({ requestId: request._id.toString(), productId: i.productId, requestedQty: i.quantity }));
+  async createRequest(input: { branchId: string; requestedBy: string; items: { productId: string; requestedQty: number }[] }) {
+    const request = await this.requestRepo.createRequest(
+      {
+        branchId: input.branchId,
+        requestedBy: input.requestedBy
+      });
+    const itemsData = input.items.map(i => ({ requestId: request._id.toString(), productId: i.productId, requestedQty: i.requestedQty }));
     const savedItems = await this.itemRepo.createManyItems(itemsData);
     return { request, items: savedItems };
   }

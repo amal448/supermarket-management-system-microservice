@@ -6,9 +6,10 @@ export type UserRole = "cashier" | "manager" | "admin";
 export class SalesService {
   constructor(private repo: ISaleRepository) { }
 
-  async getSalesDataByAccount(user: { id: string; role: UserRole; branchId: string }) {
-    return this.repo.getSalesForRole(user);
-  }
+async getSalesDataByAccount(user: { id: string; role: UserRole; branchId: string, page: number, limit: number, search: string }) {
+  return this.repo.getSalesForRole(user, user.page, user.limit, user.search);
+}
+
   async getSaleById(id: string) {
     return this.repo.getSaleById(id);
   }

@@ -20,8 +20,8 @@ export const AuthService = {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const key = `otp:${newUser.email.toLowerCase().trim()}`;
         // await redis.set(key, otp, "EX", OTP_EXPIRY);
-        console.log("otp",otp);
-        
+        console.log("otp", otp);
+
         console.log("OTP saved under key:", key);
 
 
@@ -34,7 +34,7 @@ export const AuthService = {
         const key = `otp:${email.toLowerCase().trim()}`;
         // const storedOtp = await redis.get(key);
         // console.log("storedOtp",storedOtp);
-        
+
         console.log("Verifying using key:", key);
 
 
@@ -53,13 +53,25 @@ export const AuthService = {
 
     async login(email: string, password: string) {
         const user = await UserRepository.findByEmail(email);
+        console.log("useruseruser",user);
+        
         if (!user) throw new Error("Invalid email or password");
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) throw new Error("Invalid email or password");
 
-        const accessToken = createAccessToken(user);
-        const refreshToken = createRefreshToken(user);
+        const accessToken = createAccessToken({
+            id: user._id.toString(),
+            username: user.username,
+            role: user.role,
+            branchId: user.branchId,
+        });
+        const refreshToken = createRefreshToken({
+            id: user._id.toString(),
+            username: user.username,
+            role: user.role,
+            branchId: user.branchId,
+        });
 
         return {
             user: {
@@ -67,7 +79,7 @@ export const AuthService = {
                 name: user.username,
                 email: user.email,
                 role: user.role,
-                branchId:user.branchId
+                branchId: user.branchId
             },
             accessToken,
             refreshToken,
@@ -78,5 +90,5 @@ export const AuthService = {
 
 
     },
-    
+
 }

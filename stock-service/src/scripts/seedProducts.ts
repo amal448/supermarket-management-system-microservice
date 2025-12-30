@@ -1,10 +1,12 @@
 // src/scripts/seedProducts.ts
 import mongoose from "mongoose";
+import "dotenv/config";
 import { ProductModel } from "../infrastructure/database/models/product.model";
 // adjust path according to your structure
 
 // ---------- CONFIGURE DB ----------
-const MONGO_URI = process.env.MONGO_URI ||'mongodb://localhost:27017/stock-management' ;
+// const MONGO_URI = process.env.MONGO_URI ||'mongodb://localhost:27017/stock-management' ;
+const MONGO_URI = process.env.MONGO_URI! ;
 
 // ---------- SKU GENERATOR (same as your service logic) ----------
 function generateSKU(name: string, brand: string, unit: string) {

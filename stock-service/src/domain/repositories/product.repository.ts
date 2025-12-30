@@ -1,5 +1,5 @@
 // src/infrastructure/repositories/product.repository.ts
-import { ProductEntity } from "../../domain/entities/product.entity";
+import { PaginatedResponse, ProductEntity } from "../../domain/entities/product.entity";
 import { ProductModel } from "../../infrastructure/database/models/product.model";
 import { sendProductInfoUpdate } from "../../kafka/productProducer/productProducer";
 
@@ -12,10 +12,23 @@ export class ProductRepository {
     return this.mapDocToEntity(product);
   }
 
-  async findAll(): Promise<ProductEntity[]> {
-    const products = await ProductModel.find().lean();
-    
-    return products.map((p) => this.mapDocToEntity(p));
+  async findAll(page: number, limit: number, search: string):Promise<PaginatedResponse<ProductEntity>> {
+    const skip = (page - 1) * limit;
+
+    const filter = search
+      ? { name: { $regex: search, $options: "i" } }
+      : {};
+    const [items, total] = await Promise.all([
+      ProductModel.find(filter).skip(skip).limit(limit).lean(),
+      ProductModel.countDocuments(filter),
+    ]);
+
+    return {
+      items: items.map(p => this.mapDocToEntity(p)),
+      total,
+      page,
+      limit,
+    };
   }
   async findOne(name: string, unit: string, brand: string): Promise<ProductEntity | null> {
     const product = await ProductModel.findOne({ name, unit, brand }).lean();

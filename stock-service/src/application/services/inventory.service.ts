@@ -42,12 +42,28 @@ export class InventoryService {
     return this.productRepo.create(data);
   }
 
-  async listBranchProducts(branchId: string, showOutOfStock: boolean = false) {
+  async listBranchProducts(
+    branchId: string,
+    showOutOfStock: boolean = false,
+    page: number,
+    limit: number,
+    search: string = ""
+  ) {
     const branchObjectId = new Types.ObjectId(branchId);
+    const skip = (page - 1) * limit;
 
-    const pipeline: any[] = [
-      { $match: {} },
+    const pipeline: any[] = [];
 
+    // 🔍 SEARCH (early match for performance)
+    if (search) {
+      pipeline.push({
+        $match: {
+          name: { $regex: search, $options: "i" } // adjust fields if needed
+        }
+      });
+    }
+
+    pipeline.push(
       {
         $lookup: {
           from: "branchinventories",
@@ -109,102 +125,149 @@ export class InventoryService {
         },
       },
 
-      // compute final fields
+      // 🧮 COMPUTED FIELDS
       {
         $addFields: {
           stock: { $ifNull: ["$inventory.stock", 0] },
           requiredLevel: { $ifNull: ["$inventory.requiredLevel", 10] },
           inBranch: { $cond: [{ $gt: ["$inventory", null] }, true, false] },
           isRequested: { $gt: [{ $size: "$requests" }, 0] },
-          requestedQty: { $ifNull: [{ $arrayElemAt: ["$requests.requestedQty", 0] }, 0] },
+          requestedQty: {
+            $ifNull: [{ $arrayElemAt: ["$requests.requestedQty", 0] }, 0],
+          },
           branchId: branchObjectId,
         },
-      },
-    ];
+      }
+    );
 
-    // ➜ ADD CONDITIONALLY the $match
+    // 🚫 Hide out-of-stock
     if (!showOutOfStock) {
       pipeline.push({
-        $match: { stock: { $gt: 0 } }
+        $match: { stock: { $gt: 0 } },
       });
     }
 
-    pipeline.push({
-      $project: {
-        inventory: 0,
-        requests: 0,
+    // 📦 PAGINATION + TOTAL COUNT
+    pipeline.push(
+      {
+        $facet: {
+          data: [
+            { $sort: { name: 1 } },   // optional sort
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $project: {
+                inventory: 0,
+                requests: 0,
+              },
+            },
+          ],
+          totalCount: [
+            { $count: "count" }
+          ],
+        },
+      },
+      {
+        $addFields: {
+          total: { $ifNull: [{ $arrayElemAt: ["$totalCount.count", 0] }, 0] },
+          page,
+          limit,
+          totalPages: {
+            $ceil: {
+              $divide: [
+                { $ifNull: [{ $arrayElemAt: ["$totalCount.count", 0] }, 0] },
+                limit,
+              ],
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          totalCount: 0,
+        },
       }
-    });
+    );
 
-    return ProductModel.aggregate(pipeline);
+    const result = await ProductModel.aggregate(pipeline);
+
+    return {
+      data: result[0]?.data ?? [],
+      pagination: {
+        total: result[0]?.total ?? 0,
+        page: result[0]?.page ?? page,
+        limit: result[0]?.limit ?? limit,
+        totalPages: result[0]?.totalPages ?? 0,
+      },
+    };
   }
 
   async validateStockForCart(payload: {
-  branchId: string;
-  items: Array<{
-    productId: string;
-    qty: number;
-    freeUnits?: number;
-  }>;
-}) {
-  const { branchId, items } = payload;
+    branchId: string;
+    items: Array<{
+      productId: string;
+      qty: number;
+      freeUnits?: number;
+    }>;
+  }) {
+    const { branchId, items } = payload;
 
-  const results = [];
+    const results = [];
 
-  for (const item of items) {
-    const { productId, qty, freeUnits = 0 } = item;
+    for (const item of items) {
+      const { productId, qty, freeUnits = 0 } = item;
 
-    const totalRequested = qty + freeUnits;
+      const totalRequested = qty + freeUnits;
 
-    // reuse your existing method
-    const stock = await this.getCurrentStock(branchId, productId);
+      // reuse your existing method
+      const stock = await this.getCurrentStock(branchId, productId);
 
-    const available = stock?.stockQty ?? 0;
+      const available = stock?.stockQty ?? 0;
 
-    if (available >= totalRequested) {
-      results.push({
-        productId,
-        requested: totalRequested,
-        available,
-        ok: true
-      });
-    } else {
-      results.push({
-        productId,
-        requested: totalRequested,
-        available,
-        ok: false,
-        message: `Only ${available} left`
-      });
+      if (available >= totalRequested) {
+        results.push({
+          productId,
+          requested: totalRequested,
+          available,
+          ok: true
+        });
+      } else {
+        results.push({
+          productId,
+          requested: totalRequested,
+          available,
+          ok: false,
+          message: `Only ${available} left`
+        });
+      }
     }
+
+    const allOk = results.every((r) => r.ok);
+    console.log("before return,allOk", allOk, results);
+
+    return {
+      valid: allOk,
+      results
+    };
   }
 
-  const allOk = results.every((r) => r.ok);
-console.log("before return,allOk",allOk,results);
-
-  return {
-    valid: allOk,
-    results
-  };
-}
 
 
 
 
 
-  
-async getCurrentStock(branchId: string, productId: string) {
-  const item = await BranchInventory.findOne({ branchId, productId });
+  async getCurrentStock(branchId: string, productId: string) {
+    const item = await BranchInventory.findOne({ branchId, productId });
 
-  if (!item) {
-    return { stockQty: 0, isOut: true };
+    if (!item) {
+      return { stockQty: 0, isOut: true };
+    }
+
+    return {
+      stockQty: item.stock,
+      isOut: item.stock === 0
+    };
   }
-
-  return {
-    stockQty: item.stock,
-    isOut: item.stock === 0
-  };
-}
 
 
   async updateProduct(user: AuthenticatedUser, id: string, data: Partial<ProductEntity>) {
@@ -212,8 +275,8 @@ async getCurrentStock(branchId: string, productId: string) {
     return this.productRepo.update(id, data);
   }
 
-  async getProducts() {
-    return this.productRepo.findAll();
+  async getProducts(page: number, limit: number, search: string) {
+    return this.productRepo.findAll(page, limit, search);
   }
 
   async getProductById(id: string) {

@@ -9,3 +9,9 @@ export interface ProductEntity {
   sellingPrice: number;
   createdBy:string; // Admin who added
 }
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}

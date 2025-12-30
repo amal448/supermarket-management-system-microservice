@@ -1,5 +1,5 @@
 import { SalesAnalyticsAggregate } from "../../infrastructure/repositories/SaleRepository";
-import { SaleEntity } from "../entities/Sale";
+import { PaginatedSales, SaleEntity } from "../entities/Sale";
 
 export interface SalesAnalyticsResult {
   data: SalesAnalyticsAggregate[];
@@ -15,12 +15,12 @@ export interface ISaleRepository {
     sale: SaleEntity,
   ): Promise<{ sale: SaleEntity }>;
 
-  getSalesForRole(user: {
-    id: string;
-    role: "cashier" | "manager" | "admin";
-    branchId: string;
-  }): Promise<SaleEntity[]>;
-
+  getSalesForRole(
+    user: { id: string; role: "cashier" | "manager" | "admin"; branchId: string },
+    page?: number,
+    limit?: number,
+    search?: string
+  ): Promise<PaginatedSales>;
   getSaleById(id: string): Promise<SaleEntity | null>;
   // getAll(branchId?: string): Promise<SaleEntity[]>;
 
@@ -34,7 +34,7 @@ export interface ISaleRepository {
     monthlyTotal: number;
     yearlyTotal: number;
   }>;
-  getBranchSummary(branchId?:string,month?: number, year?: number): Promise<{
+  getBranchSummary(branchId?: string, month?: number, year?: number): Promise<{
     daily: any[];
     monthlyTotal: number;
     yearlyTotal: number;

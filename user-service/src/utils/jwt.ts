@@ -1,9 +1,15 @@
 import jwt from "jsonwebtoken";
+import { Role } from "../domain/entities/user.entity";
 
-export const createAccessToken = (user: any) => {
+export const createAccessToken = (user: {
+  id: string;
+  username: string;
+  role: Role;
+  branchId?: string;
+}) => {
   return jwt.sign(
     {
-      id: user._id,
+      id: user.id,
       username: user.username,
       role: user.role,
       branchId: user.branchId,
@@ -13,11 +19,16 @@ export const createAccessToken = (user: any) => {
   );
 };
 
-export const createRefreshToken = (user: any) => {
+export const createRefreshToken = (user: {
+  id: string;
+  username: string;
+  role: Role;
+  branchId?: string;
+}) => {
   
   return jwt.sign(
     {
-      id: user._id,
+      id: user.id,
       username: user.username,
       role: user.role,
       branchId: user.branchId,

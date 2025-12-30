@@ -14,7 +14,7 @@ export const confirmSale = async (req: Request, res: Response) => {
     const { cartResult, paymentMode } = req.body;
 
     const { branchId, id } = req.user!;
-
+    
     //For Card
     if (paymentMode === 'CARD') {
       const session = await useCase.createStripeCheckoutSession({
@@ -32,21 +32,31 @@ export const confirmSale = async (req: Request, res: Response) => {
   }
 };
 export const getSales = async (req: Request, res: Response) => {
-  try {
-    // const  {id}= req.user;
-    console.log("requser", req.user);
-    const sale = await salesService.getSalesDataByAccount(req.user!);
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 5;
+  const search = String(req.query.search || "");
 
-    if (!sale) {
-      return res.status(404).json({ message: "Sale not found" });
+  try {
+    const sales = await salesService.getSalesDataByAccount({
+      ...req.user!,
+      page,
+      limit,
+      search
+    });
+
+    if (!sales.data || sales.data.length === 0) {
+      return res.status(404).json({ message: "No sales found" });
     }
 
-    res.json(sale);
+   res.json(sales); 
   } catch (err: any) {
     res.status(500).json({ message: err.message });
   }
 };
+
 export const getSaleById = async (req: Request, res: Response) => {
+  console.log("getSaleById", req.body);
+
   try {
     const sale = await salesService.getSaleById(req.params.salesId);
 
@@ -62,8 +72,8 @@ export const getSalesDashBoard = async (req: Request, res: Response) => {
   try {
     const role = req.user?.role;
     const branchId = req.user?.branchId;
-    console.log("getSalesDashBoard",role,branchId);
-    
+    console.log("getSalesDashBoard", role, branchId);
+
     let summary;
 
     if (role === "admin") {

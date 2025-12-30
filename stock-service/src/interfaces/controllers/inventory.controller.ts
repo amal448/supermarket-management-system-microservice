@@ -32,9 +32,13 @@ export const InventoryController = {
     }
   },
 
-  getProducts: async (_req: Request, res: Response) => {
+  getProducts: async (req: Request, res: Response) => {
     try {
-      const result = await inventoryService.getProducts();
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 5;
+      const search = String(req.query.search || "");
+
+      const result = await inventoryService.getProducts(page, limit, search);
 
       res.status(200).json(result);
     } catch (err: any) {
@@ -54,40 +58,45 @@ export const InventoryController = {
   },
 
   async getBranchInventory(req: Request, res: Response) {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 5;
+    const search = String(req.query.search || "");
+
     const user = req.user as { branchId: string, role: String };
     console.log("user", user);
     const showOutOfStock = user.role === "manager";
-    console.log("showOutOfStock",showOutOfStock);
-    
+    console.log("showOutOfStock", showOutOfStock);
+
     const result = await inventoryService.listBranchProducts(
       user.branchId,
-      showOutOfStock
+      showOutOfStock,
+      page, limit, search
     );
     return res.json(result);
   },
-async checkBranchInventoryStock(req: Request, res: Response) {
-  console.log("checkBranchInventoryStockcheckBranchInventoryStock",req.body);
-  
-  try {
-    const user = req.user as { branchId: string; role: string };
-    const { branchId,items } = req.body;
+  async checkBranchInventoryStock(req: Request, res: Response) {
+    console.log("checkBranchInventoryStockcheckBranchInventoryStock", req.body);
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "No items provided" });
+    try {
+      const user = req.user as { branchId: string; role: string };
+      const { branchId, items } = req.body;
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "No items provided" });
+      }
+
+      const result = await inventoryService.validateStockForCart({
+        branchId: branchId,
+        items
+      });
+
+      return res.json(result);
+
+    } catch (err: any) {
+      console.error("Stock validation error:", err);
+      return res.status(500).json({ message: err.message });
     }
-
-    const result = await inventoryService.validateStockForCart({
-      branchId:branchId,
-      items
-    });
-
-    return res.json(result);
-
-  } catch (err: any) {
-    console.error("Stock validation error:", err);
-    return res.status(500).json({ message: err.message });
   }
-}
 
 
 

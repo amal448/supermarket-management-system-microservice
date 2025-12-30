@@ -1,5 +1,5 @@
 import { ISaleRepository } from "../../domain/repositories/ISaleRepository";
-import { SaleEntity } from "../../domain/entities/Sale";
+import { PaginatedSales, SaleEntity } from "../../domain/entities/Sale";
 import { SaleModel } from "../mongoose-schemas/sale.schema";
 import { toSaleEntity } from "../mappers/SaleMapper";
 import { UserRole } from "../../application/services/sales.service";
@@ -39,25 +39,38 @@ export class SaleRepository implements ISaleRepository {
     return { sale: toSaleEntity(createdSale.toObject()) };
   }
 
-  async getSalesForRole(user: { id: string; role: UserRole; branchId: string }): Promise<SaleEntity[]> {
-    let filter: any = {};
+async getSalesForRole(
+  user: { id: string; role: UserRole; branchId: string },
+  page = 1,
+  limit = 5,
+  search = ""
+): Promise<PaginatedSales> {
+  let filter: any = {};
 
-    if (user.role === "cashier") {
-      filter = { cashierId: user.id };
-    }
-    else if (user.role === "manager") {
-      filter = { branchId: user.branchId };
-    }
-    else if (user.role === "admin") {
-      filter = {}; // all sales
-    }
-
-    console.log("Sales filter:", filter);
-
-    const docs = await SaleModel.find(filter).lean();
-
-    return docs.map(toSaleEntity);
+  if (user.role === "cashier") {
+    filter = { cashierId: user.id };
+  } else if (user.role === "manager") {
+    filter = { branchId: user.branchId };
+  } else if (user.role === "admin") {
+    filter = {}; // all sales
   }
+
+  if (search) {
+    filter.$or = [{ _id: search }, { "items.productId": search }];
+  }
+
+  const skip = (page - 1) * limit;
+
+  const [docs, total] = await Promise.all([
+    SaleModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    SaleModel.countDocuments(filter)
+  ]);
+
+  const data = docs.map(toSaleEntity);
+
+  return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+}
+
 
   async updateStatus(
     saleId: string,

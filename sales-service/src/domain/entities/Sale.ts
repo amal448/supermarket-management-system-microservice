@@ -20,3 +20,10 @@ export interface SaleEntity {
   createdAt?: Date;
   updatedAt?: Date;
 }
+export interface PaginatedSales {
+  data: SaleEntity[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages?: number; // optional
+}
