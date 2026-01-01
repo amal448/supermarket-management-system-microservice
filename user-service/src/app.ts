@@ -33,7 +33,7 @@ app.use(cors({
 }));
 
 // VERY IMPORTANT
-app.options("*", cors());
+app.options("/*", cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
