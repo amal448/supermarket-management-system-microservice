@@ -25,13 +25,25 @@ export const AuthController = {
       console.log("refreshToken", refreshToken);
 
       // store JWT in cookie
+      // res.cookie("refreshToken", refreshToken, {
+      //   httpOnly: true,
+      //   // secure: true,
+      //   // sameSite: "none",
+      //   secure: false,      // 🔑 MUST be false on HTTP
+      //   sameSite: "lax",    // 🔑 MUST NOT be "none" on HTTP
+      //   path: "/", // important
+      //   maxAge: 7 * 24 * 60 * 60 * 1000,
+      // });
+      const isProd = process.env.NODE_ENV === "production";
+
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: "/", // important
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
+        path: "/",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
+
       console.log("user", user);
 
       res.status(200).json({
@@ -79,18 +91,18 @@ export const AuthController = {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as { id: string };
-      console.log("decoded",decoded);
-      
+      console.log("decoded", decoded);
+
       const user = await UserModel.findById(decoded.id);
 
       if (!user) return res.status(404).json({ message: "User not found" });
 
       const newAccessToken = createAccessToken({
-  id: user.id.toString(),
-  username: user.username,
-  role: user.role,
-  branchId: user.branchId,
-});
+        id: user.id.toString(),
+        username: user.username,
+        role: user.role,
+        branchId: user.branchId,
+      });
 
 
       return res.json({ accessToken: newAccessToken, user: { id: user._id, name: user.username, email: user.email, role: user.role, branchId: user.branchId } });

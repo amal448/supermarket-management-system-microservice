@@ -58,7 +58,8 @@ export class StockRequestController {
     try {
       // 1️⃣ Fetch managers
       const usersResponse = await axios.get(
-        "http://localhost:5000/api/user/get-all-manager",
+        // "http://localhost:5000/api/user/get-all-manager",
+        "/api/user/get-all-manager",
         { withCredentials: true }
       );
 

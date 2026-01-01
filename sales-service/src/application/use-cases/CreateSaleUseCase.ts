@@ -113,7 +113,8 @@ export class CheckoutUseCase {
     // BEFORE creating Sale
     try {
       const isStockValid = await axios.post(
-        "http://localhost:5003/api/inventory/check/branch-stock",
+        "/api/inventory/check/branch-stock",
+        // "http://localhost:5003/api/inventory/check/branch-stock",
         {
           branchId,
           items: cartResult.lines.map((l: { productId: string; quantity: number; freeUnits?: number }) => ({

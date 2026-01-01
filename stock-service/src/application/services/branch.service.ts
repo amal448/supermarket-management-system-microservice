@@ -29,7 +29,8 @@ async createBranch(payload: any) {
 
   // 3️⃣ Update user with branchId
   const updateRes = await axios.post(
-    "http://localhost:5000/api/user/update-user",
+    // "http://localhost:5000/api/user/update-user",
+    "/api/user/update-user",
     {
       id: data.managerId,
       branchId: createdBranch._id,
