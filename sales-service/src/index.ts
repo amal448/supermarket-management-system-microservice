@@ -47,7 +47,6 @@ app.use(cors({
 }));
 
 // VERY IMPORTANT
-app.options("/*", cors());
 
 app.use(cookieParser());
 
