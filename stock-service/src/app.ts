@@ -43,7 +43,7 @@ app.use(cookieParser());
 
 app.use("/api/stock/", stockRequestRoutes);
 app.use("/api/branch/", branchRoutes);
-app.use("/api/inventory/", inventoryRoutes);
+app.use("/api/inventory", inventoryRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚀 Store Management Backend is running");
