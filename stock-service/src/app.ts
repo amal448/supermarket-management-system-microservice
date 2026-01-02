@@ -27,7 +27,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.options("/api/*", cors());
+// app.options("/api/*", cors());
 
 // VERY IMPORTANT
 

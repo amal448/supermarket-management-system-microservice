@@ -42,6 +42,7 @@ export const InventoryController = {
 
       res.status(200).json(result);
     } catch (err: any) {
+       console.error("InventoryController Error:", err);
       res.status(400).json({ message: err.message });
     }
   },
