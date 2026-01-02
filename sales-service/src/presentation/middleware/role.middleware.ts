@@ -12,6 +12,12 @@ interface JwtPayload {
 
 export const authorizeRoles = (...allowedRoles: Role[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
+
+      // ✅ ALLOW PREFLIGHT
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+    
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith("Bearer")) {
