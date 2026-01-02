@@ -11,7 +11,6 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://joyful-genie-aaea2e.netlify.app"
 ];
-
 app.use(cors({
   origin: function (origin, callback) {
     // allow REST tools like Postman (no origin)
@@ -27,6 +26,8 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+app.options("/api/*", cors());
 
 // VERY IMPORTANT
 
