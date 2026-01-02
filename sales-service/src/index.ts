@@ -50,7 +50,7 @@ app.use(cors({
 
 app.use(cookieParser());
 
-app.options("*", cors());
+// app.options("*", cors());
 // Routes
 app.use("/api/discounts", discountRoutes);
 app.use("/api/sales", salesRoutes)
