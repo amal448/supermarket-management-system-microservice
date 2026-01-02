@@ -14,13 +14,16 @@ export function setupSocket(httpServer: HTTPServer) {
   const io = new Server(httpServer, {
     path: "/socket.io",
     cors: {
-      origin: "http://localhost:5173",
+      origin: [
+        "http://localhost:5173",
+        "https://joyful-genie-aaea2e.netlify.app"
+      ],
       methods: ["GET", "POST"],
       credentials: true
     },
-    transports: ["websocket", "polling"],
-    allowEIO3: true
+    transports: ["websocket", "polling"]
   });
+
 
   global.io = io;
 
@@ -87,10 +90,10 @@ export function setupSocket(httpServer: HTTPServer) {
     // Admin sends broadcast to manager
     socket.on("admin-broadcast", async ({ senderId, message }) => {
       const managers = await managerService.getManagers();
-      console.log("admin-broadcast",managers);
-      
+      console.log("admin-broadcast", managers);
+
       managers.forEach(m => {
-        chatService.saveChat(senderId,m._id.toString(), message, "broadcast");
+        chatService.saveChat(senderId, m._id.toString(), message, "broadcast");
         io.to(`user:${m._id}`).emit("receive-message", {
           message,
           senderId,
