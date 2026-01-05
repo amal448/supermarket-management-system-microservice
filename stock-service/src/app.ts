@@ -6,22 +6,8 @@ import branchRoutes from './interfaces/routes/branch.routes'
 import inventoryRoutes from "./interfaces/routes/inventory.routes";
 export const app = express();
 
-// app.use(cors({ origin:["http://localhost:5173","https://joyful-genie-aaea2e.netlify.app"], credentials: true }));
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://joyful-genie-aaea2e.netlify.app"
-];
 app.use(cors({
-  origin: function (origin, callback) {
-    // allow REST tools like Postman (no origin)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS not allowed"));
-    }
-  },
+  origin: "https://joyful-genie-aaea2e.netlify.app",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
