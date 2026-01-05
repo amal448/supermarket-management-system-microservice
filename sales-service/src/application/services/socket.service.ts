@@ -5,7 +5,7 @@ let io: Server;
 export const initSocket = (httpServer: any) => {
     io = new Server(httpServer, {
         cors: {
-            origin: "http://localhost:5173",
+            origin: "https://joyful-genie-aaea2e.netlify.app",
             methods: ["GET", "POST"],
             credentials: true,
         }

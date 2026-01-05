@@ -22,10 +22,10 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS not allowed"));
-    }
+     return  callback(null, true);
+    } 
+     console.warn("Blocked CORS request from:", origin);
+    return callback(null, false); // reject silently in production
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

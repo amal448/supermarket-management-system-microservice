@@ -1,4 +1,4 @@
-import { Server } from "socket.io";
+import { Server  as SocketServer} from "socket.io";
 import { Server as HTTPServer } from "http";
 import { ChatMessageService } from "./chatmessage.service";
 import { UserService } from "./user.service";
@@ -11,12 +11,12 @@ export function setupSocket(httpServer: HTTPServer) {
   const managerService = new UserService(userRepo);
   console.log("📡 setupSocket CALLED");
   // Create Socket.io server
-  const io = new Server(httpServer, {
-    path: "/socket.io",
+  const io = new SocketServer(httpServer, {
+    // path: "/socket.io",
     cors: {
       origin: [
+        "https://joyful-genie-aaea2e.netlify.app",
         "http://localhost:5173",
-        "https://joyful-genie-aaea2e.netlify.app"
       ],
       methods: ["GET", "POST"],
       credentials: true
