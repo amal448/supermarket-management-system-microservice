@@ -10,8 +10,13 @@ import socketRoutes from "./interfaces/routes/chat.routes";
 export const app = express();
 
 // Middlewares
-// app.use(cors({ origin:["http://localhost:5173","https://joyful-genie-aaea2e.netlify.app"], credentials: true }));
-// const allowedOrigins = [
+app.use(cors({
+  origin: ["https://joyful-genie-aaea2e.netlify.app"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
 //   "http://localhost:5173",
 //   "https://joyful-genie-aaea2e.netlify.app"
 // ];
