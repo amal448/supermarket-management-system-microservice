@@ -11,26 +11,26 @@ export const app = express();
 
 // Middlewares
 // app.use(cors({ origin:["http://localhost:5173","https://joyful-genie-aaea2e.netlify.app"], credentials: true }));
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://joyful-genie-aaea2e.netlify.app"
-];
+// const allowedOrigins = [
+//   "http://localhost:5173",
+//   "https://joyful-genie-aaea2e.netlify.app"
+// ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow REST tools like Postman (no origin)
-    if (!origin) return callback(null, true);
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     // allow REST tools like Postman (no origin)
+//     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
-     return  callback(null, true);
-    } 
-     console.warn("Blocked CORS request from:", origin);
-    return callback(null, false); // reject silently in production
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+//     if (allowedOrigins.includes(origin)) {
+//      return  callback(null, true);
+//     } 
+//      console.warn("Blocked CORS request from:", origin);
+//     return callback(null, false); // reject silently in production
+//   },
+//   credentials: true,
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//   allowedHeaders: ["Content-Type", "Authorization"]
+// }));
 
 // Handle preflight requests globally
 
