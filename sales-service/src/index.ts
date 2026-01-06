@@ -19,11 +19,12 @@ dotenv.config();
 const app = express();
 app.post(
     "/api/payments/stripe-webhook",
-    bodyParser.raw({ type: "application/json" }), // must be raw for signature
+    bodyParser.raw({ type: "*/*" }), // must be raw for signature
     stripeWebhook
 );
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 // app.use(cors({ origin:["http://localhost:5173","https://joyful-genie-aaea2e.netlify.app"], credentials: true }));
 const allowedOrigins = [
   "http://localhost:5173",

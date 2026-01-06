@@ -16,9 +16,9 @@ export const stripeWebhook = async (req: Request, res: Response, next: NextFunct
   try {
     const payload = req.body as Buffer; // must use raw body parser
     console.log("stripeWebhook is called", payload);
-    console.log("Stripe event data:", JSON.parse(payload.toString()));
-
+    
     event = stripe.webhooks.constructEvent(payload, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+    console.log("Stripe event data:", event.type);
   } catch (err: any) {
     console.log("Webhook signature error", err);
     return res.status(400).send(`Webhook Error: ${err.message}`);
