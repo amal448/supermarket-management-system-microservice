@@ -116,8 +116,8 @@ export const AuthController = {
 
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
+      secure: true,
+      sameSite: "none" ,
       path: "/",
     });
     res.status(200).json({ message: "Logged out successfully" });
